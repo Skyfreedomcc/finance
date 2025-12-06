@@ -7,14 +7,18 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 员工管理控制器
+ */
 @RestController
-@RequestMapping("/employee") // 前端就是请求这个路径
+@RequestMapping("/employee")
+@CrossOrigin(origins = "*") // 【关键】允许前端跨域访问，必须有这一行！
 public class EmployeeController {
 
     @Autowired
     private IEmployeeService employeeService;
 
-    // 前端请求 GET /employee/list 就是找这里
+    // 获取所有员工列表
     @GetMapping("/list")
     public List<Employee> list() {
         return employeeService.list();
