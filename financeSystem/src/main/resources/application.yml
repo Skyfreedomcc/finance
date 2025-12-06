@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: finance-system
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 👇【关键修改】就是下面这行 url，必须加上 allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/finance_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    # 👆 请确认你的数据库密码是不是 123456，如果不是请修改这里
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开启控制台打印 SQL，方便调试
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/*.xml
+  global-config:
+    db-config:
+      id-type: auto
