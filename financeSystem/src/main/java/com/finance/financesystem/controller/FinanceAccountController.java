@@ -1,6 +1,5 @@
 package com.finance.financesystem.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.finance.financesystem.entity.FinanceAccount;
 import com.finance.financesystem.service.IFinanceAccountService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,47 +7,63 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 会计科目控制器
- */
 @RestController
 @RequestMapping("/financeAccount")
-@CrossOrigin(origins = "*") // 【绝对关键】必须加这行，否则前端拿不到数据！
+@CrossOrigin(origins = "*")
 public class FinanceAccountController {
 
     @Autowired
-    private IFinanceAccountService financeAccountService;
+    private IFinanceAccountService accountService;
 
     /**
-     * 获取科目列表 (前端下拉框和列表页都用这个)
+     * 获取所有会计科目列表
      */
     @GetMapping("/list")
     public List<FinanceAccount> list() {
-        // 查询所有科目，并按照科目代码 (1001, 1002...) 正序排列
-        return financeAccountService.list(new QueryWrapper<FinanceAccount>().orderByAsc("account_code"));
+        return accountService.list();
+    }
+
+    /**
+     * 获取树形结构的科目表
+     */
+    @GetMapping("/tree")
+    public List<FinanceAccount> tree() {
+        // 返回所有科目，前端可以自己构建树
+        return accountService.list();
+    }
+
+    /**
+     * 根据ID获取单个科目
+     */
+    @GetMapping("/{id}")
+    public FinanceAccount getById(@PathVariable Long id) {
+        return accountService.getById(id);
     }
 
     /**
      * 新增科目
      */
-    @PostMapping("/add")
-    public boolean add(@RequestBody FinanceAccount account) {
-        return financeAccountService.save(account);
+    @PostMapping
+    public String add(@RequestBody FinanceAccount account) {
+        accountService.save(account);
+        return "新增成功";
     }
 
     /**
-     * 修改科目
+     * 更新科目
      */
-    @PostMapping("/update")
-    public boolean update(@RequestBody FinanceAccount account) {
-        return financeAccountService.updateById(account);
+    @PutMapping
+    public String update(@RequestBody FinanceAccount account) {
+        accountService.updateById(account);
+        return "更新成功";
     }
 
     /**
      * 删除科目
      */
-    @DeleteMapping("/delete/{id}")
-    public boolean delete(@PathVariable Long id) {
-        return financeAccountService.removeById(id);
+    @DeleteMapping("/{id}")
+    public String delete(@PathVariable Long id) {
+        accountService.removeById(id);
+        return "删除成功";
     }
 }

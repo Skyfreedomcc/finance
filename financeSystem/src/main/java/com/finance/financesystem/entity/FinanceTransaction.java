@@ -54,4 +54,7 @@ public class FinanceTransaction implements Serializable {
      */
     @TableField("create_time")
     private LocalDateTime createTime;
+
+    @TableField("status")
+    private String status;
 }

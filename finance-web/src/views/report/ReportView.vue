@@ -1,141 +1,309 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+/**
+ * 财务报表中心
+ *
+ * 包含三大财务报表：
+ * 1. 资产负债表
+ * 2. 利润表
+ * 3. 现金流量表
+ */
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import { Printer, Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const activeTab = ref('balance')
 const loading = ref(false)
-// 【通用化】定义一个公司名称变量，以后可以从设置里读取
-const companyName = ref('我的企业 (演示账套)')
 
-const reportData = ref({
-  // 资产
-  monetaryFund: 0, receivables: 0, inventory: 0, fixedAssets: 0, totalAssets: 0,
-  // 负债
-  payables: 0, shortLoan: 0, totalLiabilities: 0,
-  // 权益
-  paidInCapital: 0, retainedEarnings: 0, totalEquity: 0,
-  // 利润
-  operatingIncome: 0, operatingCost: 0, operatingProfit: 0, totalProfit: 0, netProfit: 0,
-  // 现金流
-  cashInflow: 0, cashOutflow: 0, netCashFlow: 0
+// 资产负债表数据
+const assetTree = ref([])
+const liabTree = ref([])
+const totalAsset = ref(0)
+const totalLiabEquity = ref(0)
+
+// 利润表数据
+const incomeData = ref({
+  revenue: 0,
+  cost: 0,
+  grossProfit: 0,
+  expense: 0,
+  financeExpense: 0,
+  operatingProfit: 0,
+  netProfit: 0
 })
 
-const loadReport = async () => {
+// 现金流量表数据
+const cashflowData = ref({
+  salesCashIn: 0,
+  purchaseCashOut: 0,
+  salaryCashOut: 0,
+  otherCashIn: 0,
+  otherCashOut: 0,
+  operatingCashNet: 0,
+  investingCashNet: 0,
+  financingCashNet: 0,
+  totalCashChange: 0
+})
+
+// 加载所有数据
+const loadData = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8080/report/summary')
-    const d = res.data || {}
-
-    // 映射数据
-    reportData.value.monetaryFund = d.assets || 0
-    reportData.value.totalAssets = d.assets || 0
-    reportData.value.payables = d.liabilities || 0
-    reportData.value.totalLiabilities = d.liabilities || 0
-    reportData.value.totalEquity = d.equity || 0
-    reportData.value.paidInCapital = (d.equity || 0) - (d.profit || 0)
-    reportData.value.retainedEarnings = d.profit || 0
-
-    reportData.value.operatingIncome = d.income || 0
-    reportData.value.operatingCost = d.expense || 0
-    const profit = (d.income || 0) - (d.expense || 0)
-    reportData.value.operatingProfit = profit
-    reportData.value.totalProfit = profit
-    reportData.value.netProfit = profit
-
-    reportData.value.cashInflow = d.income || 0
-    reportData.value.cashOutflow = d.expense || 0
-    reportData.value.netCashFlow = d.cashNet || 0
-
-  } catch (err) {
-    console.error(err)
+    await Promise.all([
+      loadBalanceSheet(),
+      loadIncomeStatement(),
+      loadCashflowStatement()
+    ])
+    ElMessage.success('报表数据加载完成')
+  } catch (e) {
+    console.error('报表加载失败', e)
+    ElMessage.error('报表加载失败')
   } finally {
     loading.value = false
   }
 }
 
-const printReport = () => window.print()
+// 1. 加载资产负债表
+const loadBalanceSheet = async () => {
+  const res = await axios.get('http://localhost:8080/report/balance-sheet')
+  const data = res.data
 
-onMounted(() => loadReport())
+  assetTree.value = data.asset ? [data.asset] : []
+
+  const rightSide = []
+  if (data.liability) rightSide.push(data.liability)
+  if (data.equity) rightSide.push(data.equity)
+  liabTree.value = rightSide
+
+  totalAsset.value = calcTreeSum(assetTree.value)
+  totalLiabEquity.value = calcTreeSum(liabTree.value)
+}
+
+// 2. 加载利润表
+const loadIncomeStatement = async () => {
+  try {
+    const res = await axios.get('http://localhost:8080/report/income')
+    incomeData.value = res.data
+  } catch (e) {
+    console.warn('利润表接口不可用，使用默认值')
+  }
+}
+
+// 3. 加载现金流量表
+const loadCashflowStatement = async () => {
+  try {
+    const res = await axios.get('http://localhost:8080/report/cashflow')
+    cashflowData.value = res.data
+  } catch (e) {
+    console.warn('现金流量表接口不可用，使用默认值')
+  }
+}
+
+// 递归计算树的总金额
+const calcTreeSum = (nodes) => {
+  let sum = 0
+  for (const node of nodes) {
+    if (node.children && node.children.length > 0) {
+      node.amount = calcTreeSum(node.children)
+    }
+    sum += Number(node.amount || 0)
+  }
+  return sum
+}
+
+// 格式化金额
+const formatMoney = (val) => {
+  const num = Number(val || 0)
+  return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// 资产负债是否平衡
+const isBalanced = computed(() => {
+  return Math.abs(totalAsset.value - totalLiabEquity.value) < 0.01
+})
+
+onMounted(() => loadData())
 </script>
 
 <template>
-  <div class="report-container">
-    <div class="toolbar no-print">
-      <div class="left">
-        <h2>📊 财务报表中心</h2>
-      </div>
-      <div class="right">
-        <el-button :icon="Refresh" @click="loadReport" :loading="loading">刷新数据</el-button>
-        <el-button type="primary" :icon="Printer" @click="printReport">打印报表</el-button>
-      </div>
+  <div class="report-container" v-loading="loading">
+    <div class="report-header">
+      <h2>📊 财务报表中心 (Enterprise)</h2>
+      <el-button type="primary" @click="loadData">刷新</el-button>
     </div>
 
-    <el-tabs v-model="activeTab" type="border-card" class="report-tabs">
-
+    <el-tabs v-model="activeTab" type="border-card">
+      <!-- ==================== 资产负债表 ==================== -->
       <el-tab-pane label="资产负债表" name="balance">
-        <div class="paper">
-          <h1 class="report-title">资 产 负 债 表</h1>
-          <div class="report-meta">
-            <span>编制单位：{{ companyName }}</span>
-            <span>单位：元</span>
+        <div class="balance-sheet-layout">
+          <!-- 左侧：资产 -->
+          <div class="bs-panel">
+            <div class="panel-title">资产</div>
+            <el-table
+              :data="assetTree"
+              row-key="id"
+              default-expand-all
+              :tree-props="{children:'children'}"
+              border
+              stripe
+              size="small"
+            >
+              <el-table-column prop="name" label="科目" min-width="200" />
+              <el-table-column prop="amount" label="余额" width="150" align="right">
+                <template #default="scope">
+                  <span :class="{ 'negative': scope.row.amount < 0 }">
+                    {{ formatMoney(scope.row.amount) }}
+                  </span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="total-bar asset">
+              资产总计: <b>¥ {{ formatMoney(totalAsset) }}</b>
+            </div>
           </div>
-          <table class="accounting-table">
+
+          <!-- 右侧：负债及权益 -->
+          <div class="bs-panel">
+            <div class="panel-title">负债及所有者权益</div>
+            <el-table
+              :data="liabTree"
+              row-key="id"
+              default-expand-all
+              :tree-props="{children:'children'}"
+              border
+              stripe
+              size="small"
+            >
+              <el-table-column prop="name" label="科目" min-width="200" />
+              <el-table-column prop="amount" label="余额" width="150" align="right">
+                <template #default="scope">
+                  <span :class="{ 'negative': scope.row.amount < 0 }">
+                    {{ formatMoney(scope.row.amount) }}
+                  </span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="total-bar liability">
+              负债+权益总计: <b>¥ {{ formatMoney(totalLiabEquity) }}</b>
+            </div>
+          </div>
+        </div>
+
+        <!-- 平衡检查 -->
+        <div class="balance-check" :class="isBalanced ? 'ok' : 'err'">
+          <span v-if="isBalanced">✓ 资产负债表平衡：资产 = 负债 + 所有者权益</span>
+          <span v-else>✗ 资产负债表不平衡！差额: {{ formatMoney(totalAsset - totalLiabEquity) }}</span>
+        </div>
+      </el-tab-pane>
+
+      <!-- ==================== 利润表 ==================== -->
+      <el-tab-pane label="利润表" name="profit">
+        <div class="statement-card">
+          <div class="statement-title">利润表</div>
+          <table class="statement-table">
             <thead>
-            <tr class="header-row">
-              <th width="30%">资 产</th><th width="20%">期末余额</th>
-              <th width="30%">负债和所有者权益</th><th width="20%">期末余额</th>
+            <tr>
+              <th>项目</th>
+              <th>本期金额</th>
             </tr>
             </thead>
             <tbody>
-            <tr><td class="section-head">流动资产：</td><td></td><td class="section-head">流动负债：</td><td></td></tr>
-            <tr><td>&nbsp;&nbsp;货币资金</td><td class="money">{{ reportData.monetaryFund.toFixed(2) }}</td><td>&nbsp;&nbsp;短期借款</td><td class="money">{{ reportData.shortLoan.toFixed(2) }}</td></tr>
-            <tr><td>&nbsp;&nbsp;应收账款</td><td class="money">{{ reportData.receivables.toFixed(2) }}</td><td>&nbsp;&nbsp;应付账款</td><td class="money">{{ reportData.payables.toFixed(2) }}</td></tr>
-            <tr><td>&nbsp;&nbsp;存货</td><td class="money">{{ reportData.inventory.toFixed(2) }}</td><td>&nbsp;&nbsp;应付职工薪酬</td><td class="money">0.00</td></tr>
-            <tr><td class="section-head">非流动资产：</td><td></td><td class="section-head">所有者权益：</td><td></td></tr>
-            <tr><td>&nbsp;&nbsp;固定资产</td><td class="money">{{ reportData.fixedAssets.toFixed(2) }}</td><td>&nbsp;&nbsp;实收资本</td><td class="money">{{ reportData.paidInCapital.toFixed(2) }}</td></tr>
-            <tr><td></td><td></td><td>&nbsp;&nbsp;未分配利润</td><td class="money">{{ reportData.retainedEarnings.toFixed(2) }}</td></tr>
-            <tr class="total-row"><td>资 产 总 计</td><td class="money">{{ reportData.totalAssets.toFixed(2) }}</td><td>负债和权益总计</td><td class="money">{{ (Number(reportData.totalLiabilities) + Number(reportData.totalEquity)).toFixed(2) }}</td></tr>
+            <tr>
+              <td>一、营业收入</td>
+              <td class="amount">{{ formatMoney(incomeData.revenue) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">减：营业成本</td>
+              <td class="amount">{{ formatMoney(incomeData.cost) }}</td>
+            </tr>
+            <tr class="subtotal">
+              <td>二、毛利润</td>
+              <td class="amount">{{ formatMoney(incomeData.grossProfit) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">减：管理费用</td>
+              <td class="amount">{{ formatMoney(incomeData.expense) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">减：财务费用</td>
+              <td class="amount">{{ formatMoney(incomeData.financeExpense) }}</td>
+            </tr>
+            <tr class="subtotal">
+              <td>三、营业利润</td>
+              <td class="amount">{{ formatMoney(incomeData.operatingProfit) }}</td>
+            </tr>
+            <tr class="total-row">
+              <td>四、净利润</td>
+              <td class="amount highlight">{{ formatMoney(incomeData.netProfit) }}</td>
+            </tr>
             </tbody>
           </table>
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="利润表" name="profit">
-        <div class="paper">
-          <h1 class="report-title">利 润 表</h1>
-          <div class="report-meta">
-            <span>编制单位：{{ companyName }}</span>
-            <span>单位：元</span>
-          </div>
-          <table class="accounting-table">
-            <thead><tr class="header-row"><th width="60%">项 目</th><th width="40%">本期金额</th></tr></thead>
+      <!-- ==================== 现金流量表 ==================== -->
+      <el-tab-pane label="现金流量表" name="cash">
+        <div class="statement-card">
+          <div class="statement-title">现金流量表</div>
+          <table class="statement-table">
+            <thead>
+            <tr>
+              <th>项目</th>
+              <th>金额</th>
+            </tr>
+            </thead>
             <tbody>
-            <tr><td class="bold">一、营业收入</td><td class="money">{{ reportData.operatingIncome.toFixed(2) }}</td></tr>
-            <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;减：营业成本</td><td class="money">{{ reportData.operatingCost.toFixed(2) }}</td></tr>
-            <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;税金/销售/管理费用</td><td class="money">0.00</td></tr>
-            <tr class="highlight-row"><td class="bold">二、营业利润</td><td class="money bold">{{ reportData.operatingProfit.toFixed(2) }}</td></tr>
-            <tr class="total-row"><td class="bold">三、净利润</td><td :class="{'money':true, 'text-red': reportData.netProfit<0}">{{ reportData.netProfit.toFixed(2) }}</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </el-tab-pane>
+            <tr class="section-header">
+              <td colspan="2">一、经营活动产生的现金流量</td>
+            </tr>
+            <tr>
+              <td class="indent">销售商品、提供劳务收到的现金</td>
+              <td class="amount positive">{{ formatMoney(cashflowData.salesCashIn) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">购买商品、接受劳务支付的现金</td>
+              <td class="amount negative-val">-{{ formatMoney(cashflowData.purchaseCashOut) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">支付给职工的现金</td>
+              <td class="amount negative-val">-{{ formatMoney(cashflowData.salaryCashOut) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">收到的其他与经营有关的现金</td>
+              <td class="amount">{{ formatMoney(cashflowData.otherCashIn) }}</td>
+            </tr>
+            <tr>
+              <td class="indent">支付的其他与经营有关的现金</td>
+              <td class="amount negative-val">-{{ formatMoney(cashflowData.otherCashOut) }}</td>
+            </tr>
+            <tr class="subtotal">
+              <td>经营活动现金流量净额</td>
+              <td class="amount" :class="cashflowData.operatingCashNet >= 0 ? 'positive' : 'negative-val'">
+                {{ formatMoney(cashflowData.operatingCashNet) }}
+              </td>
+            </tr>
 
-      <el-tab-pane label="现金流量表" name="cashflow">
-        <div class="paper">
-          <h1 class="report-title">现 金 流 量 表</h1>
-          <div class="report-meta">
-            <span>编制单位：{{ companyName }}</span>
-            <span>单位：元</span>
-          </div>
-          <table class="accounting-table">
-            <thead><tr class="header-row"><th width="60%">项 目</th><th width="40%">本期金额</th></tr></thead>
-            <tbody>
-            <tr><td class="bold">一、经营活动产生的现金流量：</td><td></td></tr>
-            <tr><td>&nbsp;&nbsp;销售商品收到的现金</td><td class="money">{{ reportData.cashInflow.toFixed(2) }}</td></tr>
-            <tr><td>&nbsp;&nbsp;购买商品支付的现金</td><td class="money">{{ reportData.cashOutflow.toFixed(2) }}</td></tr>
-            <tr class="highlight-row"><td class="bold">&nbsp;&nbsp;经营活动现金流量净额</td><td class="money bold">{{ reportData.netCashFlow.toFixed(2) }}</td></tr>
-            <tr class="total-row"><td class="bold">四、现金净增加额</td><td class="money bold">{{ reportData.netCashFlow.toFixed(2) }}</td></tr>
+            <tr class="section-header">
+              <td colspan="2">二、投资活动产生的现金流量</td>
+            </tr>
+            <tr class="subtotal">
+              <td>投资活动现金流量净额</td>
+              <td class="amount">{{ formatMoney(cashflowData.investingCashNet) }}</td>
+            </tr>
+
+            <tr class="section-header">
+              <td colspan="2">三、筹资活动产生的现金流量</td>
+            </tr>
+            <tr class="subtotal">
+              <td>筹资活动现金流量净额</td>
+              <td class="amount">{{ formatMoney(cashflowData.financingCashNet) }}</td>
+            </tr>
+
+            <tr class="total-row">
+              <td>四、现金及现金等价物净增加额</td>
+              <td class="amount highlight" :class="cashflowData.totalCashChange >= 0 ? 'positive' : 'negative-val'">
+                {{ formatMoney(cashflowData.totalCashChange) }}
+              </td>
+            </tr>
             </tbody>
           </table>
         </div>
@@ -145,20 +313,158 @@ onMounted(() => loadReport())
 </template>
 
 <style scoped>
-/* 保持您喜欢的黄色表头风格 */
-.report-container { padding: 20px; background-color: #eef0f4; min-height: 100vh; }
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.paper { background: white; padding: 40px; border: 1px solid #dcdfe6; font-family: "SimSun", serif; color: #333; }
-.report-title { text-align: center; font-size: 24px; font-weight: 900; margin-bottom: 20px; text-decoration: underline; text-underline-offset: 5px;}
-.report-meta { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; font-weight: bold; }
-.accounting-table { width: 100%; border-collapse: collapse; border: 2px solid #333; }
-.accounting-table th, .accounting-table td { border: 1px solid #888; padding: 6px 8px; font-size: 14px; }
-.header-row { background-color: #ffffcc; text-align: center; font-weight: bold; }
-.section-head { font-weight: bold; background-color: #f8f8f8; }
-.money { text-align: right; font-family: 'Courier New', monospace; }
-.bold { font-weight: bold; }
-.text-red { color: red; font-weight: bold; }
-.highlight-row { background-color: #f2f6fc; font-weight: bold; }
-.total-row { background-color: #e1f3d8; font-weight: 900; border-top: 2px solid #333; }
-@media print { .no-print, .el-tabs__header { display: none; } .report-container { padding: 0; } .paper { border: none; padding: 0; box-shadow: none; } }
+.report-container {
+  padding: 20px;
+  background: #f0f2f5;
+  min-height: 100vh;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.report-header h2 {
+  margin: 0;
+}
+
+/* 资产负债表布局 */
+.balance-sheet-layout {
+  display: flex;
+  gap: 20px;
+}
+
+.bs-panel {
+  flex: 1;
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.panel-title {
+  text-align: center;
+  font-weight: bold;
+  padding: 12px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #eee;
+}
+
+.total-bar {
+  padding: 12px 15px;
+  font-size: 16px;
+  text-align: right;
+  border-top: 2px solid;
+}
+
+.total-bar.asset {
+  background: #e1f3d8;
+  border-color: #67c23a;
+  color: #67c23a;
+}
+
+.total-bar.liability {
+  background: #fdf6ec;
+  border-color: #e6a23c;
+  color: #e6a23c;
+}
+
+.balance-check {
+  margin-top: 20px;
+  padding: 15px;
+  text-align: center;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.balance-check.ok {
+  background: #e1f3d8;
+  color: #67c23a;
+}
+
+.balance-check.err {
+  background: #fde2e2;
+  color: #f56c6c;
+}
+
+/* 报表卡片 */
+.statement-card {
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.statement-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 15px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #eee;
+}
+
+.statement-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.statement-table th,
+.statement-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.statement-table th {
+  background: #fafafa;
+  font-weight: bold;
+  text-align: left;
+}
+
+.statement-table th:last-child {
+  text-align: right;
+  width: 200px;
+}
+
+.statement-table .indent {
+  padding-left: 40px;
+}
+
+.statement-table .amount {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.statement-table .section-header {
+  background: #f5f7fa;
+  font-weight: bold;
+}
+
+.statement-table .subtotal {
+  background: #fafafa;
+  font-weight: 500;
+}
+
+.statement-table .total-row {
+  background: #f0f9eb;
+  font-weight: bold;
+}
+
+.statement-table .highlight {
+  color: #67c23a;
+  font-size: 16px;
+}
+
+.statement-table .positive {
+  color: #67c23a;
+}
+
+.statement-table .negative-val {
+  color: #f56c6c;
+}
+
+.negative {
+  color: #f56c6c;
+}
 </style>
