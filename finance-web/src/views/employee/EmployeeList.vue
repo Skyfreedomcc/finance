@@ -12,7 +12,7 @@ const form = ref({ name: '', position: '', phone: '', basicSalary: 0 })
 const load = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8080/employee/list')
+    const res = await axios.get('/employee/list')
     list.value = res.data || []
   } catch (err) {
     console.error(err)
@@ -30,7 +30,7 @@ const save = async () => {
   try {
     // 【关键】这里请求的是 /employee/save，不是 sysUser
     console.log("正在提交数据...", form.value)
-    const res = await axios.post('http://localhost:8080/employee/save', form.value)
+    const res = await axios.post('/employee/save', form.value)
 
     // 如果后端返回 true 或 成功状态
     if (res.data) {
@@ -53,7 +53,7 @@ const del = (id) => {
     confirmButtonText: '确定删除',
     type: 'warning'
   }).then(async () => {
-    await axios.delete(`http://localhost:8080/employee/${id}`)
+    await axios.delete(`/employee/${id}`)
     ElMessage.success('已删除')
     load()
   })

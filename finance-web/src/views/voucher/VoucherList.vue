@@ -19,8 +19,8 @@ const loadData = async () => {
   loading.value = true
   try {
     const [txRes, accRes] = await Promise.all([
-      axios.get('http://localhost:8080/financeTransaction/list'),
-      axios.get('http://localhost:8080/financeAccount/list')
+      axios.get('/financeTransaction/list'),
+      axios.get('/financeAccount/list')
     ])
 
     list.value = txRes.data || []
@@ -40,7 +40,7 @@ const loadData = async () => {
 // 加载并分析分录
 const loadAndAnalyzeSplits = async (tx) => {
   try {
-    const res = await axios.get(`http://localhost:8080/financeSplit/list?transactionId=${tx.transactionId}`)
+    const res = await axios.get(`/financeSplit/list?transactionId=${tx.transactionId}`)
     tx.splits = res.data || []
     analyzeTransaction(tx)
   } catch (e) {

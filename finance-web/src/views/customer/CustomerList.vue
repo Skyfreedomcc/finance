@@ -9,7 +9,7 @@ const form = ref({ name: '', type: 'CUSTOMER', contactPerson: '', phone: '', add
 
 const loadData = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/customer/list')
+    const res = await axios.get('/customer/list')
     // 【关键逻辑】只显示 type 为 CUSTOMER 的数据
     tableData.value = (res.data || []).filter(item => item.type === 'CUSTOMER')
   } catch (err) {
@@ -22,7 +22,7 @@ const handleSave = async () => {
 
   try {
     form.value.type = 'CUSTOMER' // 强制标记为客户
-    await axios.post('http://localhost:8080/customer/save', form.value)
+    await axios.post('/customer/save', form.value)
 
     ElMessage.success('客户保存成功！')
     dialogVisible.value = false
@@ -34,7 +34,7 @@ const handleSave = async () => {
 
 const handleDelete = (id) => {
   ElMessageBox.confirm('确定删除该客户？', '警告', { type: 'warning' }).then(async () => {
-    await axios.delete(`http://localhost:8080/customer/${id}`)
+    await axios.delete(`/customer/${id}`)
     loadData()
   })
 }

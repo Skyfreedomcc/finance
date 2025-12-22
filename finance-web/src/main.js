@@ -3,21 +3,24 @@ import './assets/main.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-// === 新增部分开始：导入 Element Plus ===
+// 1. 引入 axios
+import axios from 'axios'
+
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-// === 新增部分结束 ===
 
 import App from './App.vue'
 import router from './router'
+
+// 2. 【关键修改】设置全局的基础请求路径
+// 意思是：以后只要你用 axios 发请求，自动在前面加上 /api
+// 这样 Nginx 就能识别并转发了
+axios.defaults.baseURL = '/api'
 
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-
-// === 新增部分开始：使用 Element Plus ===
 app.use(ElementPlus)
-// === 新增部分结束 ===
 
 app.mount('#app')

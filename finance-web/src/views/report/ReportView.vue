@@ -64,7 +64,7 @@ const loadData = async () => {
 
 // 1. 加载资产负债表
 const loadBalanceSheet = async () => {
-  const res = await axios.get('http://localhost:8080/report/balance-sheet')
+  const res = await axios.get('/report/balance-sheet')
   const data = res.data
 
   assetTree.value = data.asset ? [data.asset] : []
@@ -81,7 +81,7 @@ const loadBalanceSheet = async () => {
 // 2. 加载利润表
 const loadIncomeStatement = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/report/income')
+    const res = await axios.get('/report/income')
     incomeData.value = res.data
   } catch (e) {
     console.warn('利润表接口不可用，使用默认值')
@@ -91,7 +91,7 @@ const loadIncomeStatement = async () => {
 // 3. 加载现金流量表
 const loadCashflowStatement = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/report/cashflow')
+    const res = await axios.get('/report/cashflow')
     cashflowData.value = res.data
   } catch (e) {
     console.warn('现金流量表接口不可用，使用默认值')

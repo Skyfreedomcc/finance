@@ -30,7 +30,7 @@ const splits = ref([
 // 加载科目树
 const loadAccountTree = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/financeAccount/list')
+    const res = await axios.get('/financeAccount/list')
     accountOptions.value = handleTree(res.data || [], "accountId", "parentId")
   } catch (e) {
     ElMessage.error('科目加载失败')
@@ -175,7 +175,7 @@ const saveVoucher = async (status) => {
 
   loading.value = true
   try {
-    const res = await axios.post('http://localhost:8080/financeTransaction/add', {
+    const res = await axios.post('/financeTransaction/add', {
       voucherDate: form.value.voucherDate,
       description: form.value.description,
       status: status,

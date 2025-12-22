@@ -2,22 +2,20 @@
 /**
  * 科目余额表（总账）- 完整修复版
  *
- * 功能：
- * 1. 左侧树形科目导航，显示每个科目的余额
- * 2. 点击父级科目 → 显示所有子级的汇总明细
- * 3. 点击叶子科目 → 显示该科目的具体分录
+ * 修改记录：
+ * 1. 增加了自动选中第一个节点（资产）的逻辑，进页面不再是空的。
  */
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue' // 【修改1】引入 nextTick
 import axios from 'axios'
 
+const treeRef = ref(null) // 【修改2】定义树的引用
 const treeData = ref([])
-const flatAccounts = ref([])  // 平铺的科目列表
+const flatAccounts = ref([])
 const ledgerData = ref([])
 const currentAccount = ref({})
 const loading = ref(false)
-const balanceMap = ref({})  // 科目余额映射
+const balanceMap = ref({})
 
-// 汇总数据
 const totalDebit = ref(0)
 const totalCredit = ref(0)
 const finalBalance = ref(0)
@@ -25,15 +23,12 @@ const finalBalance = ref(0)
 // 1. 加载左侧树和余额
 const loadTree = async () => {
   try {
-    // 加载科目列表
-    const accountRes = await axios.get('http://localhost:8080/financeAccount/list')
+    const accountRes = await axios.get('/financeAccount/list')
     flatAccounts.value = accountRes.data || []
 
-    // 加载所有科目的余额汇总
-    const summaryRes = await axios.get('http://localhost:8080/financeTransaction/ledger/summary')
+    const summaryRes = await axios.get('/financeTransaction/ledger/summary')
     const summaryList = summaryRes.data || []
 
-    // 构建余额映射
     summaryList.forEach(item => {
       balanceMap.value[item.accountId] = {
         totalDebit: item.totalDebit || 0,
@@ -42,24 +37,34 @@ const loadTree = async () => {
       }
     })
 
-    // 递归计算父级余额（子级汇总）
     const tree = handleTree(flatAccounts.value, "accountId", "parentId")
     calculateParentBalances(tree)
     treeData.value = tree
+
+    // 【修改3】核心逻辑：数据加载完成后，自动点击第一个节点
+    nextTick(() => {
+      if (treeData.value && treeData.value.length > 0) {
+        const firstNode = treeData.value[0]
+
+        // 1. 让左侧树高亮显示第一个节点
+        if (treeRef.value) {
+          treeRef.value.setCurrentKey(firstNode.accountId)
+        }
+
+        // 2. 自动触发点击事件，加载右侧数据
+        handleNodeClick(firstNode)
+      }
+    })
 
   } catch (e) {
     console.error('加载数据失败', e)
   }
 }
 
-// 递归计算父级余额
 const calculateParentBalances = (nodes) => {
   nodes.forEach(node => {
     if (node.children && node.children.length > 0) {
-      // 先递归计算子节点
       calculateParentBalances(node.children)
-
-      // 汇总子节点余额
       let sumDebit = 0, sumCredit = 0, sumBalance = 0
       node.children.forEach(child => {
         const childBal = balanceMap.value[child.accountId] || { totalDebit: 0, totalCredit: 0, balance: 0 }
@@ -67,10 +72,7 @@ const calculateParentBalances = (nodes) => {
         sumCredit += childBal.totalCredit
         sumBalance += childBal.balance
       })
-
-      // 如果父级自身有余额，加上
       const selfBal = balanceMap.value[node.accountId] || { totalDebit: 0, totalCredit: 0, balance: 0 }
-
       balanceMap.value[node.accountId] = {
         totalDebit: sumDebit + selfBal.totalDebit,
         totalCredit: sumCredit + selfBal.totalCredit,
@@ -80,7 +82,6 @@ const calculateParentBalances = (nodes) => {
   })
 }
 
-// 获取科目余额（用于树节点显示）
 const getAccountBalance = (accountId) => {
   const bal = balanceMap.value[accountId]
   if (!bal || bal.balance === 0) return ''
@@ -93,22 +94,16 @@ const handleNodeClick = async (data) => {
   loading.value = true
 
   try {
-    // 判断是否有子节点
     const hasChildren = data.children && data.children.length > 0
 
     if (hasChildren) {
-      // ✅ 父级科目：显示所有子级的汇总
       ledgerData.value = collectChildrenLedger(data)
-
-      // 计算汇总
       const bal = balanceMap.value[data.accountId] || {}
       totalDebit.value = bal.totalDebit || 0
       totalCredit.value = bal.totalCredit || 0
       finalBalance.value = bal.balance || 0
     } else {
-      // ✅ 叶子科目：调用后端获取具体分录
-      const res = await axios.get(`http://localhost:8080/financeTransaction/ledger/${data.accountId}`)
-
+      const res = await axios.get(`/financeTransaction/ledger/${data.accountId}`)
       if (res.data && res.data.entries) {
         ledgerData.value = res.data.entries.map(entry => ({
           date: entry.date || entry.voucherDate,
@@ -136,14 +131,10 @@ const handleNodeClick = async (data) => {
   }
 }
 
-// 收集所有子级科目的汇总信息
 const collectChildrenLedger = (node) => {
   const result = []
-
   const collectRecursive = (n, level = 0) => {
     const bal = balanceMap.value[n.accountId] || { totalDebit: 0, totalCredit: 0, balance: 0 }
-
-    // 只显示有余额的科目，或者是直接子级
     if (bal.balance !== 0 || level === 1) {
       result.push({
         accountId: n.accountId,
@@ -156,22 +147,16 @@ const collectChildrenLedger = (node) => {
         hasChildren: n.children && n.children.length > 0
       })
     }
-
-    // 递归子节点
     if (n.children) {
       n.children.forEach(child => collectRecursive(child, level + 1))
     }
   }
-
-  // 从子节点开始收集
   if (node.children) {
     node.children.forEach(child => collectRecursive(child, 1))
   }
-
   return result
 }
 
-// 工具：列表转树
 function handleTree(data, id, parentId, children) {
   let config = { id: id || 'id', parentId: parentId || 'parentId', childrenList: children || 'children' }
   var childrenListMap = {}
@@ -203,12 +188,10 @@ function handleTree(data, id, parentId, children) {
   return tree
 }
 
-// 判断当前是否显示汇总视图
 const isParentView = computed(() => {
   return currentAccount.value.children && currentAccount.value.children.length > 0
 })
 
-// 格式化金额
 const formatAmount = (val) => {
   if (val === null || val === undefined) return '-'
   return Number(val).toLocaleString('zh-CN', { minimumFractionDigits: 2 })
@@ -219,10 +202,11 @@ onMounted(() => loadTree())
 
 <template>
   <div class="ledger-layout">
-    <!-- 左侧：科目树 -->
     <div class="left-pane">
       <div class="pane-title">📂 科目导航</div>
       <el-tree
+        ref="treeRef"
+        node-key="accountId"
         :data="treeData"
         :props="{ label: 'accountName', children: 'children' }"
         default-expand-all
@@ -240,7 +224,6 @@ onMounted(() => loadTree())
       </el-tree>
     </div>
 
-    <!-- 右侧：明细表 -->
     <div class="right-pane">
       <div class="pane-header">
         <div class="pane-title">
@@ -249,13 +232,11 @@ onMounted(() => loadTree())
         <div class="balance-tag">余额: {{ formatAmount(finalBalance) }}</div>
       </div>
 
-      <!-- 汇总栏 -->
       <div class="summary-bar">
         <span>借方合计: <b class="debit">{{ formatAmount(totalDebit) }}</b></span>
         <span>贷方合计: <b class="credit">{{ formatAmount(totalCredit) }}</b></span>
       </div>
 
-      <!-- 父级视图：显示子科目汇总 -->
       <el-table
         v-if="isParentView"
         :data="ledgerData"
@@ -303,7 +284,6 @@ onMounted(() => loadTree())
         </template>
       </el-table>
 
-      <!-- 叶子视图：显示具体分录 -->
       <el-table
         v-else
         :data="ledgerData"

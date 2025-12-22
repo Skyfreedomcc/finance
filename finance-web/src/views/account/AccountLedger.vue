@@ -23,7 +23,7 @@ const loadLedger = async () => {
   loading.value = true
   try {
     // ✅ 使用正确的明细账接口
-    const res = await axios.get(`http://localhost:8080/financeTransaction/ledger/${accountId}`)
+    const res = await axios.get(`/financeTransaction/ledger/${accountId}`)
 
     if (res.data) {
       accountInfo.value = res.data.account || {}

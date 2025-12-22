@@ -51,6 +51,13 @@ const router = createRouter({
           component: () => import('../views/account/AccountLedger.vue')
         },
 
+        // === 【新增】收付款管理 ===
+        {
+          path: 'payment/center',
+          name: 'PaymentCenter',
+          component: () => import('../views/payment/PaymentView.vue')
+        },
+
         // === 2. 供应商 & 采购 ===
         { path: 'vendor/list', component: VendorList },
         { path: 'invoice/purchase', component: BillEntry, props: { type: 'PURCHASE' } },

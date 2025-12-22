@@ -18,7 +18,7 @@ const form = ref({
 
 // 获取列表
 const getUserList = async () => {
-  const res = await axios.get('http://localhost:8080/sysUser/list')
+  const res = await axios.get('/sysUser/list')
   tableData.value = res.data
 }
 
@@ -38,7 +38,7 @@ const submitForm = async () => {
 
   try {
     // 发送请求给后端
-    const res = await axios.post('http://localhost:8080/sysUser/add', form.value)
+    const res = await axios.post('/sysUser/add', form.value)
 
     if (res.data.code === 200) {
       ElMessage.success('添加成功！')

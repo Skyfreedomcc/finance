@@ -39,7 +39,7 @@ const loadData = async () => {
   loading.value = true
   try {
     // 加载员工列表
-    const empRes = await axios.get('http://localhost:8080/employee/list')
+    const empRes = await axios.get('/employee/list')
     employees.value = (empRes.data || []).map(emp => ({
       ...emp,
       baseSalary: emp.baseSalary || emp.salary || 5000,
@@ -49,7 +49,7 @@ const loadData = async () => {
     }))
 
     // 加载科目列表
-    const accRes = await axios.get('http://localhost:8080/financeAccount/list')
+    const accRes = await axios.get('/financeAccount/list')
     accounts.value = accRes.data || []
 
     // 自动匹配科目
@@ -230,7 +230,7 @@ const submitPayroll = async () => {
         }
       ]
 
-      const res = await axios.post('http://localhost:8080/financeTransaction/add', {
+      const res = await axios.post('/financeTransaction/add', {
         voucherDate: new Date().toISOString().split('T')[0],
         description: description,
         status: 'POSTED',
@@ -260,7 +260,7 @@ const submitPayroll = async () => {
         }
       ]
 
-      const res1 = await axios.post('http://localhost:8080/financeTransaction/add', {
+      const res1 = await axios.post('/financeTransaction/add', {
         voucherDate: new Date().toISOString().split('T')[0],
         description: `${currentMonth.value} 计提工资`,
         status: 'POSTED',
@@ -283,7 +283,7 @@ const submitPayroll = async () => {
         }
       ]
 
-      const res2 = await axios.post('http://localhost:8080/financeTransaction/add', {
+      const res2 = await axios.post('/financeTransaction/add', {
         voucherDate: new Date().toISOString().split('T')[0],
         description: `${currentMonth.value} 发放工资`,
         status: 'POSTED',

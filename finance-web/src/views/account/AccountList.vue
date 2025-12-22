@@ -116,7 +116,7 @@ const getAccountTypeTagType = (accountType) => {
 const getList = async () => {
   loading.value = true;
   try {
-    const res = await axios.get('http://localhost:8080/financeAccount/list');
+    const res = await axios.get('/financeAccount/list');
     treeData.value = handleTree(res.data || [], "accountId", "parentId");
   } catch (error) {
     ElMessage.error("获取数据失败");
@@ -128,7 +128,7 @@ const getList = async () => {
 // 2. 提交新增
 const submitForm = async () => {
   try {
-    await axios.post('http://localhost:8080/financeAccount/save', form.value);
+    await axios.post('/financeAccount/save', form.value);
     ElMessage.success("保存成功");
     open.value = false;
     getList();
@@ -142,7 +142,7 @@ const handleDelete = (row) => {
   ElMessageBox.confirm('是否确认删除名称为"' + row.accountName + '"的科目？', "警告", {
     type: "warning"
   }).then(async () => {
-    await axios.delete(`http://localhost:8080/financeAccount/delete/${row.accountId}`);
+    await axios.delete(`/financeAccount/delete/${row.accountId}`);
     ElMessage.success("删除成功");
     getList();
   });

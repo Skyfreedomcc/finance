@@ -13,7 +13,7 @@ const form = ref({
 
 // 获取账簿列表
 const getBookList = async () => {
-  const res = await axios.get('http://localhost:8080/financeBook/list')
+  const res = await axios.get('/financeBook/list')
   tableData.value = res.data
 }
 
@@ -39,7 +39,7 @@ const submitForm = async () => {
   }
 
   try {
-    const res = await axios.post('http://localhost:8080/financeBook/add', form.value)
+    const res = await axios.post('/financeBook/add', form.value)
     if (res.data.code === 200) {
       ElMessage.success('创建成功！')
       dialogVisible.value = false

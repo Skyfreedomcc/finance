@@ -26,8 +26,8 @@ const loadData = async () => {
   loading.value = true
   try {
     const [resEmp, resAcc] = await Promise.all([
-      axios.get('http://localhost:8080/employee/list'),
-      axios.get('http://localhost:8080/financeAccount/list')
+      axios.get('/employee/list'),
+      axios.get('/financeAccount/list')
     ])
 
     employeeList.value = (resEmp.data || []).map(emp => ({
@@ -179,7 +179,7 @@ const submitPayroll = async () => {
         ]
       }
 
-      const res = await axios.post('http://localhost:8080/financeTransaction/add', transaction)
+      const res = await axios.post('/financeTransaction/add', transaction)
 
       if (res.data.code === 200) {
         ElMessage.success(`工资发放成功！凭证号: ${res.data.transactionId}`)

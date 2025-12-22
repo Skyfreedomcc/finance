@@ -19,7 +19,7 @@ const loading = ref(false)
 const loadDrafts = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8080/financeTransaction/list')
+    const res = await axios.get('/financeTransaction/list')
     const drafts = (res.data || []).filter(t => t.status === 'DRAFT' || !t.status)
 
     // 为每个凭证加载分录明细
@@ -38,7 +38,7 @@ const loadDrafts = async () => {
 // 加载分录明细
 const loadSplits = async (tx) => {
   try {
-    const res = await axios.get(`http://localhost:8080/financeSplit/list?transactionId=${tx.transactionId}`)
+    const res = await axios.get(`/financeSplit/list?transactionId=${tx.transactionId}`)
     tx.splits = res.data || []
   } catch (e) {
     tx.splits = []
@@ -63,7 +63,7 @@ const executePost = async () => {
       { type: 'warning' }
     )
 
-    const res = await axios.post('http://localhost:8080/financeTransaction/post', selectedIds.value)
+    const res = await axios.post('/financeTransaction/post', selectedIds.value)
     if (res.data.code === 200) {
       ElMessage.success('过账成功！')
       loadDrafts()
@@ -84,7 +84,7 @@ const postSingle = async (tx) => {
       { type: 'warning' }
     )
 
-    const res = await axios.post('http://localhost:8080/financeTransaction/post', [tx.transactionId])
+    const res = await axios.post('/financeTransaction/post', [tx.transactionId])
     if (res.data.code === 200) {
       ElMessage.success('过账成功！')
       loadDrafts()
@@ -105,7 +105,7 @@ const deleteTx = async (tx) => {
       { type: 'error' }
     )
 
-    const res = await axios.delete(`http://localhost:8080/financeTransaction/delete/${tx.transactionId}`)
+    const res = await axios.delete(`/financeTransaction/delete/${tx.transactionId}`)
     if (res.data.code === 200) {
       ElMessage.success('删除成功')
       loadDrafts()

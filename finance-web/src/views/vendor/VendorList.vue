@@ -11,7 +11,7 @@ const form = ref({ name: '', type: 'VENDOR', contactPerson: '', phone: '', addre
 // 加载数据
 const loadData = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/customer/list')
+    const res = await axios.get('/customer/list')
     // 【关键逻辑】只显示 type 为 VENDOR 的数据
     tableData.value = (res.data || []).filter(item => item.type === 'VENDOR')
   } catch (err) {
@@ -26,7 +26,7 @@ const handleSave = async () => {
   try {
     form.value.type = 'VENDOR' // 确保类型正确
     // 【关键接口】指向 /customer/save
-    await axios.post('http://localhost:8080/customer/save', form.value)
+    await axios.post('/customer/save', form.value)
 
     ElMessage.success('供应商保存成功！')
     dialogVisible.value = false
@@ -43,7 +43,7 @@ const handleDelete = (id) => {
     confirmButtonText: '删除',
     type: 'warning'
   }).then(async () => {
-    await axios.delete(`http://localhost:8080/customer/${id}`)
+    await axios.delete(`/customer/${id}`)
     ElMessage.success('已删除')
     loadData()
   })

@@ -29,8 +29,8 @@ const accountTree = ref([])
 const initData = async () => {
   try {
     const [partnerRes, accountRes] = await Promise.all([
-      axios.get('http://localhost:8080/customer/list'),
-      axios.get('http://localhost:8080/financeAccount/list')
+      axios.get('/customer/list'),
+      axios.get('/financeAccount/list')
     ])
     partners.value = partnerRes.data || []
     accounts.value = accountRes.data || []
@@ -223,7 +223,7 @@ const submitBill = async (status) => {
   }
 
   try {
-    const res = await axios.post('http://localhost:8080/financeTransaction/add', {
+    const res = await axios.post('/financeTransaction/add', {
       voucherDate: form.value.date,
       description: description,
       status: status,

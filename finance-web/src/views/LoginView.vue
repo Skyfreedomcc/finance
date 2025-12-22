@@ -19,7 +19,7 @@ const handleLogin = async () => {
   }
 
   try {
-    const res = await axios.post('http://localhost:8080/sysUser/login', {
+    const res = await axios.post('/sysUser/login', {
       username: form.value.username,
       password: form.value.password
     })
